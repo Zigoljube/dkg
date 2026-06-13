@@ -97,6 +97,7 @@ export const api = {
   fetchWalletsBalances: () => withFallback(realApi.fetchWalletsBalances, mockApi.fetchWalletsBalances),
   fetchCurrentAgent: () => withFallback(realApi.fetchCurrentAgent, mockApi.fetchCurrentAgent),
   listParticipants: (id: string) => withFallback(() => realApi.listParticipants(id), () => mockApi.listParticipants(id)),
+  getContextGraphModelGrant: (id: string) => withFallback(() => realApi.getContextGraphModelGrant(id), () => mockApi.getContextGraphModelGrant(id)),
   fetchSubGraphs: (id: string) => withFallback(() => realApi.fetchSubGraphs(id), () => mockApi.fetchSubGraphs(id)),
   // Scoped notifications pane feed (useNotificationsFeed consumes this).
   fetchNotificationsFeed: () => withFallback(realApi.fetchNotificationsFeed, mockApi.fetchNotificationsFeed),

@@ -324,6 +324,16 @@ export const fetchNodeLog = (params: { lines?: number; q?: string } = {}) => {
 
 // --- Context graphs (V10) — legacy daemon paths keep working server-side redirects.
 export async function fetchContextGraphs(): Promise<{ contextGraphs: any[] }> {
+  try {
+    const fallback = await get<{ contextGraphs?: any[] }>('/api/context-graph/cache');
+    const fallbackList = fallback.contextGraphs ?? [];
+    if (fallbackList.length > 0) {
+      return { contextGraphs: fallbackList.filter((p: any) => !p.isSystem) };
+    }
+  } catch (error) {
+    // fall through to daemon list
+  }
+
   const data = await getWithTimeout<{ contextGraphs?: any[] }>(
     '/api/context-graph/list',
     CONTEXT_GRAPH_LOAD_TIMEOUT_MS,
@@ -431,6 +441,24 @@ export const removeParticipant = (contextGraphId: string, agentAddress: string) 
 
 export const listParticipants = (contextGraphId: string) =>
   get<{ contextGraphId: string; allowedAgents: string[] }>(`/api/context-graph/${encodeURIComponent(contextGraphId)}/participants`);
+
+export interface ContextGraphModelGrant {
+  contextGraphId: string;
+  enabled: boolean;
+  modelId?: string;
+}
+
+export const getContextGraphModelGrant = (contextGraphId: string) =>
+  get<ContextGraphModelGrant>(`/api/context-graph/${encodeURIComponent(contextGraphId)}/model/grant`);
+
+export const setContextGraphModelSharing = (
+  contextGraphId: string,
+  body: { enabled: boolean; modelId?: string },
+) =>
+  post<{ ok: boolean; contextGraphId: string; enabled: boolean }>(
+    `/api/context-graph/${encodeURIComponent(contextGraphId)}/model/share`,
+    body,
+  );
 
 // --- Join Request flow (Phase 2: signed agent delegation) ---
 //

@@ -15,6 +15,8 @@ export const mockApi = {
   fetchCurrentAgent: () => delay(mock.MOCK_AGENT_IDENTITY),
   listParticipants: (id: string) =>
     delay(mock.MOCK_PARTICIPANTS[id] ?? { contextGraphId: id, allowedAgents: [] }),
+  getContextGraphModelGrant: (id: string) =>
+    delay(mock.MOCK_SHARED_MODEL_GRANTS[id] ?? { contextGraphId: id, enabled: false }),
   // Codex review bug F — Overview's Subgraphs stat consumes the
   // wrapped `fetchSubGraphs` so it resolves in mock mode instead of
   // sitting at "..." after a real /sub-graph/list 404. Default to an

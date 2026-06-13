@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   authHeaders, removeParticipant, listParticipants,
   fetchAgents, listJoinRequests, approveJoinRequest, rejectJoinRequest,
+  getContextGraphModelGrant, setContextGraphModelSharing,
   type PendingJoinRequest,
 } from '../../api.js';
 import { useModalDismiss } from './useModalDismiss.js';
@@ -130,9 +131,17 @@ export function ShareProjectModal({ open, onClose, contextGraphId, contextGraphN
   const [pendingRequests, setPendingRequests] = useState<PendingJoinRequest[]>([]);
   const [processingRequest, setProcessingRequest] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'allowlist' | 'requests'>('allowlist');
+  const [sharedModelEnabled, setSharedModelEnabled] = useState(false);
+  const [sharedModelId, setSharedModelId] = useState('');
+  const [grantLoading, setGrantLoading] = useState(false);
+  const [grantSaving, setGrantSaving] = useState(false);
+  const [grantError, setGrantError] = useState<string | null>(null);
+  const [grantSaved, setGrantSaved] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    setGrantSaved(false);
+    setGrantError(null);
     fetch('/api/status', { headers: authHeaders() })
       .then(r => r.json())
       .then((data: any) => {
@@ -158,6 +167,19 @@ export function ShareProjectModal({ open, onClose, contextGraphId, contextGraphN
     listJoinRequests(contextGraphId)
       .then((data) => setPendingRequests(data.requests))
       .catch(() => setPendingRequests([]));
+
+    setGrantLoading(true);
+    getContextGraphModelGrant(contextGraphId)
+      .then((grant) => {
+        setSharedModelEnabled(grant.enabled === true);
+        setSharedModelId(grant.modelId ?? '');
+      })
+      .catch((err: any) => {
+        setGrantError(err?.message || 'Failed to load AI model access');
+        setSharedModelEnabled(false);
+        setSharedModelId('');
+      })
+      .finally(() => setGrantLoading(false));
   }, [open, contextGraphId]);
 
   // Esc-to-close + Tab focus-trap + focus-restore, same as Create/Join.
@@ -217,6 +239,24 @@ export function ShareProjectModal({ open, onClose, contextGraphId, contextGraphN
       setAgentError(err?.message || 'Failed to reject');
     } finally {
       setProcessingRequest(null);
+    }
+  };
+
+  const handleSaveSharedModel = async () => {
+    setGrantSaving(true);
+    setGrantSaved(false);
+    setGrantError(null);
+    try {
+      await setContextGraphModelSharing(contextGraphId, {
+        enabled: sharedModelEnabled,
+        modelId: sharedModelId.trim() || undefined,
+      });
+      setGrantSaved(true);
+      setTimeout(() => setGrantSaved(false), 2000);
+    } catch (err: any) {
+      setGrantError(err?.message || 'Failed to save AI model access');
+    } finally {
+      setGrantSaving(false);
     }
   };
 
@@ -349,6 +389,85 @@ export function ShareProjectModal({ open, onClose, contextGraphId, contextGraphN
                     No agents on allowlist — context graph is open to anyone who subscribes.
                   </div>
                 )}
+              </div>
+
+              <div className="v10-form-divider" />
+
+              <div className="v10-form-group">
+                <label className="v10-form-label">AI Model Access</label>
+                <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 8 }}>
+                  Optionally let approved members invoke the curator's AI model for this context graph. The API key stays on the curator node. While enabled, anyone you approve in <strong>Join Requests</strong> inherits model access automatically.
+                </div>
+
+                <div style={{
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border-default)',
+                  background: 'var(--bg-surface)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                }}>
+                  {grantLoading ? (
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Loading AI model access…</div>
+                  ) : (
+                    <>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={sharedModelEnabled}
+                          onChange={(e) => setSharedModelEnabled(e.target.checked)}
+                          disabled={grantSaving}
+                          style={{ marginTop: 2 }}
+                        />
+                        <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
+                            Share curator AI model access with approved members
+                          </span>
+                          <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+                            This controls the per-context-graph grant exposed by the shared-model MVP routes.
+                          </span>
+                        </span>
+                      </label>
+
+                      <div>
+                        <label className="v10-form-label" style={{ fontSize: 10, marginBottom: 4 }}>
+                          Advertised model ID (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={sharedModelId}
+                          onChange={(e) => setSharedModelId(e.target.value)}
+                          disabled={grantSaving}
+                          placeholder="e.g. gpt-4.1-mini"
+                          className="v10-form-input"
+                        />
+                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 6 }}>
+                          Leave blank to use the curator node's configured default. This is descriptive metadata only — not the API key.
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+                          Current state: <strong style={{ color: 'var(--text-primary)' }}>{sharedModelEnabled ? 'Enabled' : 'Disabled'}</strong>
+                          {sharedModelId.trim() ? <> · Model: <code>{sharedModelId.trim()}</code></> : null}
+                        </div>
+                        <button
+                          className="v10-modal-btn primary"
+                          onClick={handleSaveSharedModel}
+                          disabled={grantSaving || grantLoading}
+                          style={{ cursor: grantSaving || grantLoading ? 'default' : 'pointer' }}
+                        >
+                          {grantSaving ? 'Saving…' : grantSaved ? 'Saved' : 'Save AI Access'}
+                        </button>
+                      </div>
+
+                      {grantError && (
+                        <div style={{ fontSize: 10, color: 'var(--text-danger)' }}>{grantError}</div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="v10-form-divider" />

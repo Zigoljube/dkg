@@ -79,6 +79,22 @@ export const MOCK_PARTICIPANTS: Record<string, { contextGraphId: string; allowed
   },
 };
 
+export const MOCK_SHARED_MODEL_GRANTS: Record<string, { contextGraphId: string; enabled: boolean; modelId?: string }> = {
+  'cg:pharma-drug-interactions': {
+    contextGraphId: 'cg:pharma-drug-interactions',
+    enabled: true,
+    modelId: 'gpt-4.1-mini',
+  },
+  'cg:climate-science': {
+    contextGraphId: 'cg:climate-science',
+    enabled: false,
+  },
+  'cg:supply-chain-eu': {
+    contextGraphId: 'cg:supply-chain-eu',
+    enabled: false,
+  },
+};
+
 export const MOCK_OPERATIONS = {
   operations: [
     { id: 'op-1', name: 'publish', status: 'completed', startedAt: Date.now() - 120000 },
