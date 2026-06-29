@@ -152,12 +152,6 @@ export const kosavaOkfCoverage: CoverageThresholds = {
   statements: 90,
 };
 
-export const kosavaIpOracleCoverage: CoverageThresholds = {
-  lines: 90,
-  functions: 90,
-  branches: 85,
-  statements: 90,
-};
 
 /**
  * @deprecated Import a tier-specific export (e.g. `kosavaNodeUiCoverage`).
